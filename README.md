@@ -50,6 +50,10 @@
 |^^            |^^      | GC2145 | 2MP, 1600x1200  | 1/5"      | N/A         |
 
 
+=======
+## Key Features
+
+TBD
 
 ## How To Use
 
