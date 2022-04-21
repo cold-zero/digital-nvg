@@ -30,10 +30,26 @@
 </p>
 
 <!-- add banner here -->
+![screenshot](https://raw.githubusercontent.com/cold-zero/digital-nvg/dev/banner.jpg)
 
-## Key Features
+## Platform status
 
-TBD
+**NOTE:** The current firmware only outputs around 12 FPS. I am currently working on a way to implement DMA for TFT to speed up the process.
+
+|Manufacturer  |MCU     |Sensor  | Resolution      | Lens size | Status      | Download  |
+|--------------|--------|--------|-----------------|-----------|-------------|-----------|
+|Non-Espressif |ESP32-S | OV2640 | 2MP, 1600x1200  | 1/4"      | **Working** |
+|^^            |^^      | OV7725 | 0.3MP, 640x480  | 1/4"      | In progress |
+|^^            |^^      | OV7670 | 0.3MP, 640x480  | 1/6"      | N/A         |
+|^^            |^^      | OV3640 | 3MP, 2048x1536  | 1/4"      | N/A         |
+|^^            |^^      | OV3660 | 3MP, 2048x1536  | 1/5"      | N/A         |
+|^^            |^^      | OV5640 | 5MP, 2592x1944  | 1/4"      | N/A         |
+|^^            |^^      | NT99141| 1MP, 1280x720   | 1/4"      | N/A         |
+|^^            |^^      | GC032A | 0.3MP, 640x480  | 1/10"     | N/A         |
+|^^            |^^      | GC0308 | 0.3MP, 640x480  | 1/6.5"    | N/A         |
+|^^            |^^      | GC2145 | 2MP, 1600x1200  | 1/5"      | N/A         |
+
+
 
 ## How To Use
 

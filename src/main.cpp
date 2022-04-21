@@ -8,7 +8,7 @@
 #include <TJpg_Decoder.h>
 #include "camera_pins.h"
 
-#define DEBUG
+//#define DEBUG /* Comment this line to remove debug data from the screen */
 
 uint16_t fps = 0;
 
@@ -33,7 +33,7 @@ void setup()
 
     Serial.println("Initialising screen...");
     tft.begin();
-    tft.setRotation(0);
+    tft.setRotation(0); // 0 - left; 2 - right
     tft.setTextColor(0xFFFF, 0x0000);
     tft.setFreeFont(&FreeMonoBoldOblique9pt7b);
     tft.fillScreen(TFT_BLACK);
