@@ -3,17 +3,19 @@
 #include <esp_camera.h>
 #include <SPI.h>
 
-#define DEBUG /* Comment this line to remove debug data from the screen */
+static const char* TAG = "main-app";
+#define OSC_DEBUG /* Comment this line to remove debug data from the screen */
 #define CAMERA_MODEL_AI_THINKER
 
 #include "camera_pins.h"
 
-#include "lgfx_config.h" /* Testing a new lib */
+uint8_t *jpg_buf; /* JPEG image buffer */
+size_t jpg_buf_len; /* JPEG image buffer length */
+camera_fb_t *fb = NULL; /* Camera frame buffer */
 
-static const char* TAG = "main-app";
+#include "lgfx_config.h"
 
 uint16_t fps = 0;
-
 LGFX tft;
 
 void setup()
@@ -23,11 +25,11 @@ void setup()
     tft.setTextColor(0xFFFF, 0x0000);
     tft.setFont(&FreeMonoBoldOblique9pt7b);
     tft.fillScreen(TFT_BLACK);
-#ifdef DEBUG
+#ifdef OSC_DEBUG
     tft.fillScreen(TFT_CYAN);
 #endif
 
-#ifdef DEBUG
+#ifdef OSC_DEBUG
     tft.fillScreen(TFT_PURPLE);
 #endif
 
@@ -52,29 +54,30 @@ void setup()
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
-    config.pixel_format = PIXFORMAT_JPEG;
-    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+    config.pixel_format = PIXFORMAT_RGB565;
+    config.frame_size = FRAMESIZE_240X240;
 
-#ifdef DEBUG
+#ifdef OSC_DEBUG
     tft.fillScreen(TFT_YELLOW);
 #endif
     ESP_LOGI(TAG, "Checking PSRAM availability...");
     if (psramFound())
     {
         ESP_LOGI(TAG, "PSRAM found!");
-        config.frame_size = FRAMESIZE_QVGA; /* 320x240 */
+        config.fb_location = CAMERA_FB_IN_PSRAM;
         config.jpeg_quality = 10;
-        config.fb_count = 2;
+        config.fb_count = 1;
+        //config.grab_mode = CAMERA_GRAB_LATEST;
     }
     else
     {
         ESP_LOGI(TAG, "PSRAM missing!");
-        config.frame_size = FRAMESIZE_QVGA;
+        config.fb_location = CAMERA_FB_IN_DRAM;
         config.jpeg_quality = 12;
         config.fb_count = 1;
     }
 
-#ifdef DEBUG
+#ifdef OSC_DEBUG
     tft.fillScreen(TFT_GREEN);
 #endif
     esp_err_t err = esp_camera_init(&config);
@@ -84,21 +87,51 @@ void setup()
         return;
     }
 
-#ifdef DEBUG
+    /* Let's grab the sensor model and do some config on it */
+    sensor_t *s = esp_camera_sensor_get();
+
+    if (s->id.PID == OV7725_PID)
+    {
+        ESP_LOGI(TAG, "Using the OV7725 sensor!");
+        /* TODO[coldzero]: Check if these options are OK */
+        if (config.pixel_format != PIXFORMAT_RGB565)
+        {
+            err = esp_camera_deinit();
+            if (err != ESP_OK) ESP_LOGE(TAG, "Camera de-initialisation failed!");
+            config.pixel_format = PIXFORMAT_RGB565;
+            err = esp_camera_init(&config);
+            if (err != ESP_OK) ESP_LOGE(TAG, "Camera re-initialisation failed!");
+        }
+    }
+
+    if (s->id.PID == OV2640_PID)
+    {
+        ESP_LOGI(TAG, "Using the OV2640 sensor!");
+        /* set_pixformat doesn't seem to work so we have to
+           de-init an re-init the camera to set the new format */
+        if (config.pixel_format != PIXFORMAT_JPEG)
+        {
+            err = esp_camera_deinit();
+            if (err != ESP_OK) ESP_LOGE(TAG, "Camera de-initialisation failed!");
+            config.pixel_format = PIXFORMAT_JPEG;
+            err = esp_camera_init(&config);
+            if (err != ESP_OK) ESP_LOGE(TAG, "Camera re-initialisation failed!");
+        }
+    }
+
+#ifdef OSC_DEBUG
     tft.fillScreen(TFT_ORANGE);
 #endif
     ESP_LOGI(TAG, "Setup is done!");
 }
-
-uint8_t *jpg_buf; /* JPEG image buffer */
-size_t jpg_buf_len; /* JPEG image buffer length */
-camera_fb_t *fb = NULL; /* Camera frame buffer */
 
 void loop()
 {
     unsigned long start = millis();
 
     tft.startWrite();
+
+    /* Grab camera frame */
     fb = esp_camera_fb_get();
     if (!fb)
     {
@@ -123,9 +156,8 @@ void loop()
             jpg_buf = fb->buf;
         }
 
-        /* Drag captured image to the screen */
+        /* Draw captured image to the screen */
         tft.drawJpg(jpg_buf, jpg_buf_len, 0, 0, 240, 240);
-        delay(200);
 
         /* Clean up */
         if (fb->format != PIXFORMAT_JPEG)
@@ -137,7 +169,7 @@ void loop()
     unsigned long elapsed_time = millis() - start;
     fps = 1000 / elapsed_time;
 
-#ifdef DEBUG
+#ifdef OSC_DEBUG /* Print on-screen debug info */
     tft.setCursor(0, 100);
     tft.printf("FPS: %d", fps);
     tft.setCursor(0, 120);
