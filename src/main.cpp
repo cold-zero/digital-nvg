@@ -1,55 +1,37 @@
 #include <Arduino.h>
+#include <esp_log.h>
 #include <esp_camera.h>
 #include <SPI.h>
 
+#define DEBUG /* Comment this line to remove debug data from the screen */
 #define CAMERA_MODEL_AI_THINKER
 
-#include <TFT_eSPI.h>
-#include <TJpg_Decoder.h>
 #include "camera_pins.h"
 
-//#define DEBUG /* Comment this line to remove debug data from the screen */
+#include "lgfx_config.h" /* Testing a new lib */
+
+static const char* TAG = "main-app";
 
 uint16_t fps = 0;
 
-TFT_eSPI tft = TFT_eSPI();
-
-bool render_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap)
-{
-    if (y >= tft.height())
-        return 0;
-
-    tft.pushImage(x, y, w, h, bitmap);
-
-    // Return 1 to decode next block
-    return 1;
-}
+LGFX tft;
 
 void setup()
 {
-    Serial.begin(115200);
-    Serial.setDebugOutput(true);
-    Serial.println();
-
-    Serial.println("Initialising screen...");
+    ESP_LOGI(TAG, "Initialising screen...");
     tft.begin();
-    tft.setRotation(0); // 0 - left; 2 - right
     tft.setTextColor(0xFFFF, 0x0000);
-    tft.setFreeFont(&FreeMonoBoldOblique9pt7b);
+    tft.setFont(&FreeMonoBoldOblique9pt7b);
     tft.fillScreen(TFT_BLACK);
 #ifdef DEBUG
     tft.fillScreen(TFT_CYAN);
 #endif
 
-    Serial.println("Initializing JPEG decode library...");
-    TJpgDec.setJpgScale(1);
-    TJpgDec.setSwapBytes(true);
-    TJpgDec.setCallback(render_output);
 #ifdef DEBUG
     tft.fillScreen(TFT_PURPLE);
 #endif
 
-    Serial.println("Initializing camera...");
+    ESP_LOGI(TAG, "Initializing camera...");
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer = LEDC_TIMER_0;
@@ -71,22 +53,23 @@ void setup()
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
+    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
 
 #ifdef DEBUG
     tft.fillScreen(TFT_YELLOW);
 #endif
-    Serial.print("Checking PSRAM availability => ");
+    ESP_LOGI(TAG, "Checking PSRAM availability...");
     if (psramFound())
     {
-        Serial.println("PSRAM found!");
+        ESP_LOGI(TAG, "PSRAM found!");
         config.frame_size = FRAMESIZE_QVGA; /* 320x240 */
         config.jpeg_quality = 10;
         config.fb_count = 2;
     }
     else
     {
-        Serial.println("PSRAM missing!");
-        config.frame_size = FRAMESIZE_SVGA;
+        ESP_LOGI(TAG, "PSRAM missing!");
+        config.frame_size = FRAMESIZE_QVGA;
         config.jpeg_quality = 12;
         config.fb_count = 1;
     }
@@ -97,29 +80,56 @@ void setup()
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK)
     {
-        Serial.printf("Camera init failed with error 0x%x", err);
+        ESP_LOGE(TAG, "Camera init failed with error 0x%x", err);
         return;
     }
 
 #ifdef DEBUG
     tft.fillScreen(TFT_ORANGE);
 #endif
-    Serial.println("Setup is done!");
+    ESP_LOGI(TAG, "Setup is done!");
 }
+
+uint8_t *jpg_buf; /* JPEG image buffer */
+size_t jpg_buf_len; /* JPEG image buffer length */
+camera_fb_t *fb = NULL; /* Camera frame buffer */
 
 void loop()
 {
     unsigned long start = millis();
 
-    camera_fb_t *fb = NULL;
+    tft.startWrite();
     fb = esp_camera_fb_get();
     if (!fb)
     {
-        Serial.println("Failed to grab camera frame!");
+        ESP_LOGE(TAG, "Failed to grab camera frame!");
     }
     else
     {
-        TJpgDec.drawJpg(0, 0, (const uint8_t*)fb->buf, fb->len);
+        /* Let's make sure we have a JPEG image */
+        if (fb->format != PIXFORMAT_JPEG)
+        {
+            /* If image has a different format, let's try to convert it */
+            bool jpeg_converted = frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
+            if (!jpeg_converted)
+            {
+                ESP_LOGE(TAG, "JPEG compression failed!");
+                esp_camera_fb_return(fb);
+            }
+        }
+        else
+        {
+            jpg_buf_len = fb->len;
+            jpg_buf = fb->buf;
+        }
+
+        /* Drag captured image to the screen */
+        tft.drawJpg(jpg_buf, jpg_buf_len, 0, 0, 240, 240);
+        delay(200);
+
+        /* Clean up */
+        if (fb->format != PIXFORMAT_JPEG)
+            free(jpg_buf);
         esp_camera_fb_return(fb);
         fb = NULL;
     }
@@ -133,4 +143,5 @@ void loop()
     tft.setCursor(0, 120);
     tft.printf("Time elapsed: %lu", elapsed_time);
 #endif
+    tft.endWrite();
 }

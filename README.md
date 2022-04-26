@@ -8,7 +8,7 @@
 
 <p align="center">
     <a href="#">
-        <img src="https://img.shields.io/badge/version-1.0.0-blue">
+        <img src="https://img.shields.io/badge/version-1.0.0%20ALPHA-blue">
     </a>
     <a href="https://discord.gg/nYjVU6aT">
         <img src="https://img.shields.io/badge/discord-join-green">
@@ -50,7 +50,6 @@
 |^^            |^^      | GC2145 | 2MP, 1600x1200  | 1/5"      | N/A         |
 
 
-
 ## How To Use
 
 TBD
@@ -62,11 +61,8 @@ TBD
 ## Credits
 
 - [GENERAL PURPOSE](https://www.youtube.com/channel/UCUtChM6nXHxdzupRfTL58nQ) (The original creator of DPNVG)
-- Bodmer for [TFT_eSPI](https://github.com/Bodmer/TFT_eSPI)
-- Bodmer for [TJpg_Decoder](https://github.com/Bodmer/TJpg_Decoder)
+- lovyan03 for [LovyanGFX](https://github.com/lovyan03/LovyanGFX)
 
 ## License
 
 GPL 2.0
-
----

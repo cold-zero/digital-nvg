@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [1.0.0] - 2022-april-21
+## [1.1.0ALPHA] - 2022-april-21
+### Changed
+- Display library from TFT_eSPI to LovyanGFX
+
+## [1.0.0ALPHA] - 2022-april-21
 ### Added
 - First working version tested with ESP32-CAM and OV2640
