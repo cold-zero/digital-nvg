@@ -6,6 +6,8 @@
 static const char* TAG = "main-app";
 #define OSC_DEBUG /* Comment this line to remove debug data from the screen */
 #define CAMERA_MODEL_AI_THINKER
+#define RED_LED 33
+#define FLASH_LED 4
 
 #include "camera_pins.h"
 
@@ -18,8 +20,22 @@ camera_fb_t *fb = NULL; /* Camera frame buffer */
 uint16_t fps = 0;
 LGFX tft;
 
+void error_status(bool status)
+{
+    if (status)
+        analogWrite(RED_LED, 255);
+    else
+        analogWrite(RED_LED, 0);
+}
+
 void setup()
 {
+    /* Initialise LEDs */
+    pinMode(RED_LED, OUTPUT);
+    analogWrite(RED_LED, 0);
+    pinMode(FLASH_LED, OUTPUT);
+    analogWrite(FLASH_LED, 0);
+
     ESP_LOGI(TAG, "Initialising screen...");
     tft.begin();
     tft.setTextColor(0xFFFF, 0x0000);
@@ -66,7 +82,7 @@ void setup()
         ESP_LOGI(TAG, "PSRAM found!");
         config.fb_location = CAMERA_FB_IN_PSRAM;
         config.jpeg_quality = 10;
-        config.fb_count = 1;
+        config.fb_count = 2;
         //config.grab_mode = CAMERA_GRAB_LATEST;
     }
     else
@@ -123,13 +139,13 @@ void setup()
     tft.fillScreen(TFT_ORANGE);
 #endif
     ESP_LOGI(TAG, "Setup is done!");
+
+    analogWrite(RED_LED, 255);
 }
 
 void loop()
 {
     unsigned long start = millis();
-
-    tft.startWrite();
 
     /* Grab camera frame */
     fb = esp_camera_fb_get();
@@ -139,32 +155,23 @@ void loop()
     }
     else
     {
-        /* Let's make sure we have a JPEG image */
-        if (fb->format != PIXFORMAT_JPEG)
-        {
-            /* If image has a different format, let's try to convert it */
-            bool jpeg_converted = frame2jpg(fb, 80, &jpg_buf, &jpg_buf_len);
-            if (!jpeg_converted)
-            {
-                ESP_LOGE(TAG, "JPEG compression failed!");
-                esp_camera_fb_return(fb);
-            }
-        }
-        else
-        {
-            jpg_buf_len = fb->len;
-            jpg_buf = fb->buf;
-        }
-
         /* Draw captured image to the screen */
-        tft.drawJpg(jpg_buf, jpg_buf_len, 0, 0, 240, 240);
+        if (fb->format == PIXFORMAT_JPEG)
+        {
+            tft.drawJpg(fb->buf, fb->len, 0, 0, 240, 240);
+        }
+        else 
+        {
+            tft.startWrite();
+            tft.pushImageDMA(0, 0, 240, 240, (lgfx::rgb565_t*)fb->buf);
+            tft.endWrite();
+        }
 
-        /* Clean up */
-        if (fb->format != PIXFORMAT_JPEG)
-            free(jpg_buf);
         esp_camera_fb_return(fb);
         fb = NULL;
     }
+
+    tft.display();
 
     unsigned long elapsed_time = millis() - start;
     fps = 1000 / elapsed_time;
@@ -175,5 +182,4 @@ void loop()
     tft.setCursor(0, 120);
     tft.printf("Time elapsed: %lu", elapsed_time);
 #endif
-    tft.endWrite();
 }

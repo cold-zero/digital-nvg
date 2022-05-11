@@ -13,13 +13,13 @@ public:
         {
             auto cfg = _bus_instance.config();
 
-            cfg.spi_host = VSPI_HOST;
-            cfg.spi_mode = 0;
+            cfg.spi_host = HSPI_HOST;
+            cfg.spi_mode = 3;
             cfg.freq_write = 40000000; // testing: 62500000 // default: 40000000
             cfg.freq_read = 16000000;
             cfg.spi_3wire = true;
             cfg.use_lock = true;
-            cfg.dma_channel = SPI_DMA_CH2;
+            cfg.dma_channel = SPI_DMA_CH1;
             cfg.pin_sclk = 14;
             cfg.pin_mosi = 13;
             cfg.pin_miso = -1;
