@@ -4,7 +4,9 @@
 #include <SPI.h>
 
 static const char* TAG = "main-app";
-#define OSC_DEBUG /* Comment this line to remove debug data from the screen */
+
+//#define DEBUG /* Comment this line to remove debug data from the screen */
+
 #define CAMERA_MODEL_AI_THINKER
 #define RED_LED 33
 #define FLASH_LED 4
@@ -41,11 +43,11 @@ void setup()
     tft.setTextColor(0xFFFF, 0x0000);
     tft.setFont(&FreeMonoBoldOblique9pt7b);
     tft.fillScreen(TFT_BLACK);
-#ifdef OSC_DEBUG
+#ifdef DEBUG
     tft.fillScreen(TFT_CYAN);
 #endif
 
-#ifdef OSC_DEBUG
+#ifdef DEBUG
     tft.fillScreen(TFT_PURPLE);
 #endif
 
@@ -73,7 +75,7 @@ void setup()
     config.pixel_format = PIXFORMAT_RGB565;
     config.frame_size = FRAMESIZE_240X240;
 
-#ifdef OSC_DEBUG
+#ifdef DEBUG
     tft.fillScreen(TFT_YELLOW);
 #endif
     ESP_LOGI(TAG, "Checking PSRAM availability...");
@@ -93,7 +95,7 @@ void setup()
         config.fb_count = 1;
     }
 
-#ifdef OSC_DEBUG
+#ifdef DEBUG
     tft.fillScreen(TFT_GREEN);
 #endif
     esp_err_t err = esp_camera_init(&config);
@@ -135,7 +137,7 @@ void setup()
         }
     }
 
-#ifdef OSC_DEBUG
+#ifdef DEBUG
     tft.fillScreen(TFT_ORANGE);
 #endif
     ESP_LOGI(TAG, "Setup is done!");
@@ -145,7 +147,7 @@ void setup()
 
 void loop()
 {
-    unsigned long start = millis();
+    uint32_t start = millis();
 
     /* Grab camera frame */
     fb = esp_camera_fb_get();
@@ -160,7 +162,7 @@ void loop()
         {
             tft.drawJpg(fb->buf, fb->len, 0, 0, 240, 240);
         }
-        else 
+        else
         {
             tft.startWrite();
             tft.pushImageDMA(0, 0, 240, 240, (lgfx::rgb565_t*)fb->buf);
@@ -173,10 +175,10 @@ void loop()
 
     tft.display();
 
-    unsigned long elapsed_time = millis() - start;
+    uint32_t elapsed_time = millis() - start;
     fps = 1000 / elapsed_time;
 
-#ifdef OSC_DEBUG /* Print on-screen debug info */
+#ifdef DEBUG /* Print on-screen debug info */
     tft.setCursor(0, 100);
     tft.printf("FPS: %d", fps);
     tft.setCursor(0, 120);

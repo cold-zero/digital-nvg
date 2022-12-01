@@ -14,12 +14,12 @@ public:
             auto cfg = _bus_instance.config();
 
             cfg.spi_host = HSPI_HOST;
-            cfg.spi_mode = 3;
-            cfg.freq_write = 40000000; // testing: 62500000 // default: 40000000
+            cfg.spi_mode = 0;
+            cfg.freq_write = 27000000; // testing: 62500000 // default: 40000000
             cfg.freq_read = 16000000;
             cfg.spi_3wire = true;
             cfg.use_lock = true;
-            cfg.dma_channel = SPI_DMA_CH1;
+            cfg.dma_channel = SPI_DMA_CH_AUTO;
             cfg.pin_sclk = 14;
             cfg.pin_mosi = 13;
             cfg.pin_miso = -1;
@@ -47,7 +47,7 @@ public:
             cfg.invert = true;
             cfg.rgb_order = false;
             cfg.dlen_16bit = false;
-            cfg.bus_shared = true;
+            cfg.bus_shared = false;
 
             _panel_instance.config(cfg);
         }
