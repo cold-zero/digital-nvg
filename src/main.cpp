@@ -1,55 +1,48 @@
 #include <Arduino.h>
 #include <esp_camera.h>
+#include <soc/soc.h>           // Disable brownour problems
+#include <soc/rtc_cntl_reg.h>  // Disable brownour problems
+#include <driver/rtc_io.h>
+
 #include <SPI.h>
+#include <TFT_eSPI.h>
+#include <TFT_eFEX.h>
 
 #define CAMERA_MODEL_AI_THINKER
-
-#include <TFT_eSPI.h>
-#include <TJpg_Decoder.h>
 #include "camera_pins.h"
 
 //#define DEBUG /* Comment this line to remove debug data from the screen */
-
-uint16_t fps = 0;
+#ifdef DEBUG
+#define LOG(x) Serial.printf(x)
+#else
+#define LOG(X)
+#endif
 
 TFT_eSPI tft = TFT_eSPI();
+TFT_eFEX  fex = TFT_eFEX(&tft);
 
-bool render_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t *bitmap)
-{
-    if (y >= tft.height())
-        return 0;
-
-    tft.pushImage(x, y, w, h, bitmap);
-
-    // Return 1 to decode next block
-    return 1;
-}
+camera_fb_t* fb = NULL;
+uint32_t fps = 0;
 
 void setup()
 {
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
+
+#ifdef DEBUG
     Serial.begin(115200);
     Serial.setDebugOutput(true);
-    Serial.println();
-
-    Serial.println("Initialising screen...");
+#endif
+    LOG("\n");
+    LOG("Initialising screen...");
     tft.begin();
-    tft.setRotation(0); // 0 - left; 2 - right
+    tft.setRotation(0);  // 0 - left; 2 - right
     tft.setTextColor(0xFFFF, 0x0000);
     tft.setFreeFont(&FreeMonoBoldOblique9pt7b);
     tft.fillScreen(TFT_BLACK);
 #ifdef DEBUG
     tft.fillScreen(TFT_CYAN);
 #endif
-
-    Serial.println("Initializing JPEG decode library...");
-    TJpgDec.setJpgScale(1);
-    TJpgDec.setSwapBytes(true);
-    TJpgDec.setCallback(render_output);
-#ifdef DEBUG
-    tft.fillScreen(TFT_PURPLE);
-#endif
-
-    Serial.println("Initializing camera...");
+    LOG("Initializing camera...");
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer = LEDC_TIMER_0;
@@ -75,19 +68,23 @@ void setup()
 #ifdef DEBUG
     tft.fillScreen(TFT_YELLOW);
 #endif
-    Serial.print("Checking PSRAM availability => ");
-    if (psramFound())
+    LOG("Checking PSRAM availability => ");
+    if(psramFound())
     {
-        Serial.println("PSRAM found!");
-        config.frame_size = FRAMESIZE_QVGA; /* 320x240 */
+        LOG("PSRAM found!");
+        config.frame_size = FRAMESIZE_QVGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
         config.jpeg_quality = 10;
+        config.grab_mode = CAMERA_GRAB_LATEST;
+        config.fb_location = CAMERA_FB_IN_PSRAM;
         config.fb_count = 2;
     }
     else
     {
-        Serial.println("PSRAM missing!");
+        LOG("PSARM missing!");
         config.frame_size = FRAMESIZE_SVGA;
         config.jpeg_quality = 12;
+        config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+        config.fb_location = CAMERA_FB_IN_DRAM;
         config.fb_count = 1;
     }
 
@@ -97,34 +94,36 @@ void setup()
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK)
     {
-        Serial.printf("Camera init failed with error 0x%x", err);
+        LOG("Camera init failed!\n");
         return;
     }
 
 #ifdef DEBUG
     tft.fillScreen(TFT_ORANGE);
 #endif
-    Serial.println("Setup is done!");
+    LOG("Setup is done!");
 }
 
 void loop()
 {
-    unsigned long start = millis();
+    uint32_t start = millis();
 
-    camera_fb_t *fb = NULL;
     fb = esp_camera_fb_get();
+
     if (!fb)
     {
-        Serial.println("Failed to grab camera frame!");
+        LOG("Failed to grab camera frame!");
+        return;
     }
     else
     {
-        TJpgDec.drawJpg(0, 0, (const uint8_t*)fb->buf, fb->len);
-        esp_camera_fb_return(fb);
-        fb = NULL;
+        fex.drawJpg((const uint8_t*)fb->buf, fb->len, 0, 0, 240, 240);
     }
 
-    unsigned long elapsed_time = millis() - start;
+    esp_camera_fb_return(fb);
+    fb = NULL;
+
+    uint32_t elapsed_time = millis() - start;
     fps = 1000 / elapsed_time;
 
 #ifdef DEBUG
